@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>わが家の献立</title>
+<style>
+:root{--bg:#f6f7f3;--card:#fff;--line:#dfe4dc;--text:#263229;--muted:#6d776f;--accent:#5d8065;--accent2:#e9f0e8;--shadow:0 4px 18px rgba(30,50,35,.08)}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Yu Gothic",sans-serif}
+header{position:sticky;top:0;z-index:5;background:rgba(246,247,243,.95);backdrop-filter:blur(10px);padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+h1{font-size:22px;margin:0 0 4px}.sub{font-size:12px;color:var(--muted)}
+main{max-width:900px;margin:auto;padding:14px 12px 80px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button,.btn{border:1px solid var(--line);background:white;color:var(--text);border-radius:10px;padding:9px 12px;font-size:14px;cursor:pointer}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.day{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:12px 0;padding:14px;box-shadow:var(--shadow)}
+.dayhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.dayname{font-weight:700;font-size:18px}.rule{font-size:11px;color:var(--muted)}
+.row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:start;margin:10px 0}
+.label{font-size:13px;font-weight:700;padding-top:9px}.badge{display:inline-block;font-size:11px;background:var(--accent2);color:#46604d;border-radius:999px;padding:3px 7px;margin-left:5px}
+select,input,textarea{width:100%;font:inherit;border:1px solid #cfd6ce;border-radius:10px;background:#fff;padding:9px;color:var(--text)}
+select{min-height:40px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.memo{margin-top:6px}.memo input{font-size:13px;background:#fbfcfa}
+.field-title{font-size:11px;color:var(--muted);margin:0 0 4px}
+.free{margin-top:7px}.hint{font-size:11px;color:var(--muted);margin-top:5px}
+.side-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions{display:flex;gap:7px;justify-content:flex-end;margin-top:12px}
+.summary{background:#edf3ec;border:1px solid #d7e3d5;border-radius:14px;padding:12px;margin:14px 0}
+.summary strong{font-size:14px}.summary-line{font-size:13px;margin-top:4px}
+.history{display:none}.history-item{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.rating{display:flex;gap:5px}.star{font-size:23px;border:0;background:transparent;padding:0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:10}.modal.open{display:flex}
+.sheet{background:#fff;width:min(900px,100%);max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px}.sheet h2{margin:0 0 14px;font-size:19px}
+@media(max-width:620px){.row{grid-template-columns:1fr;gap:5px}.pair,.side-picker{grid-template-columns:1fr}.label{padding-top:0}.day{padding:12px}.toolbar button{flex:1}}
+</style>
+
+<style id="main-readability-adjustments">
+/* 主菜の「魚・鶏・豚」などのカテゴリを大きく */
+.row .label .badge{
+  font-size:16px;
+  font-weight:700;
+  padding:5px 10px;
+  margin-left:7px;
+}
+
+/* 主菜の項目名 */
+.row .label{
+  font-size:15px;
+  font-weight:700;
+  line-height:1.5;
+}
+
+/* 主菜の料理選択欄を見やすく */
+.row select{
+  min-height:46px;
+  font-size:16px;
+  padding:9px 12px;
+}
+
+/* 主菜の自由入力欄 */
+.row input{
+  min-height:44px;
+  font-size:16px;
+  padding:9px 12px;
+}
+
+/* 曜日の見出しも少し見やすく */
+.dayname{
+  font-size:20px;
+}
+</style>
+
+
+<style id="soup-ingredient-original-size">
+/* 味噌汁の「豆腐・わかめ・ねぎ…」の具材ボタンだけ、安定版と同じ大きさに戻す */
+label.soup-ingredient,
+.soup-ingredient {
+  font-size:12px !important;
+  padding:5px 8px !important;
+}
+</style>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="わが家の献立">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.json">
+
+</head>
+<body>
+<header><h1>わが家の献立</h1><div class="sub">わが家の献立帳 ・ 本番版</div></header>
+<main>
+<div class="toolbar">
+  <button class="primary" onclick="saveWeek()">今週を保存</button>
+  <button onclick="showHistory()">履歴を見る</button>
+  <button onclick="clearWeek()">入力をクリア</button>
+</div>
+<div id="days"></div>
+<div id="history" class="history day"></div>
+</main>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeModal()">
+ <div class="sheet">
+  <div id="modalBody"></div>
+  <div class="actions"><button onclick="closeModal()">閉じる</button></div>
+ </div>
+</div>
+
+<script>
+const DATA = {"main": {"魚": ["バター焼き", "照り焼き", "甘酢あん", "フライ　/　唐揚げ", "煮つけ", "味噌煮", "アクアパッツァ", "トマポテ重ね蒸し", "味噌蒸し", "チーズ蒸し", "漬け魚蒸し〔オリーブオイル〕", "バター蒸し", "〔醤油or塩レモンをかけて食べる〕"], "鶏": ["照り焼き（蓮根/長芋/南瓜）", "甘酢（蓮根/長芋/南瓜）", "甘酢うまダレ（蓮根/長芋）", "ネギ塩焼き", "鶏キムチ", "酢鶏〔ケチャップ/醤油〕", "唐揚げ", "ドライカレー（鶏）", "トマト煮", "きのこクリーム煮", "親子丼", "そぼろ（鶏）", "野菜のそぼろ煮", "蒸し鶏"], "豚": ["グリル（玉ねぎ）", "生姜焼き（玉ねぎ）", "照り焼き（れんこん/長芋）", "甘酢（蓮根/長芋/南瓜）", "甘酢うまダレ（蓮根/長芋）", "チンジャオロース", "味噌炒め", "八宝菜", "豚卵炒め", "ゴーヤチャンプルー", "塩豚丼（長ネギ）", "肉じゃが", "豚丼", "冷しゃぶ", "キャベツ（白菜）蒸し"], "豚ひき肉": ["ハンバーグ", "肉詰め", "春巻き", "スコップコロッケ", "ドライカレー（豚）", "春巻き丼", "肉じゃが", "そぼろ（豚）", "野菜のそぼろ煮", "キャベツ/白菜とひき肉の重ね蒸し"], "土日のメニュー": ["ちらし寿司", "ビビンバ", "豚キムチ丼（長ネギ・ニラ）", "麻婆丼", "オムライス", "ミラノ風ドリア", "ナポリタン", "焼きそば", "肉うどん", "味噌煮込みうどん", "鍋", "そうめん", "冷やし中華", "お好み焼き"]}, "side": {"月木": {"かぼちゃ": ["チーズ焼き", "バター炒め", "バター醤油炒め", "味噌炒め", "煮つけ", "パンプキンサラダ"], "トマト": ["チーズ焼き", "焼きトマト〔ガーリック/ガーリックレモン/ ガーリックコンソメ/ガーリック醤油〕"], "ブロッコリー": []}, "火": {"小松菜": ["バター炒め", "バター醤油炒め", "オイスターソース炒め", "煮浸し（油揚げ）", "高野豆腐", "クリーム煮〔中華風/洋風〕", "おかか和え", "胡麻和え", "白和え", "ツナ和え", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限小松菜（ナムル＋ツナ）"], "ほうれん草": ["バター炒め", "バター醤油炒め", "オイスターソース炒め", "煮浸し（油揚げ）", "高野豆腐", "クリーム煮〔中華風/洋風〕", "おかか和え", "胡麻和え", "白和え", "ツナ和え", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限ほうれん草（ナムル＋ツナ）"], "青梗菜": ["バター炒め", "バター醤油炒め", "オイスターソース炒め", "煮浸し（油揚げ）", "高野豆腐", "クリーム煮〔中華風/洋風〕", "おかか和え", "胡麻和え", "白和え", "ツナ和え", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限青梗菜（ナムル＋ツナ）"], "いんげん": ["バター炒め", "バター醤油炒め", "オイスターソース炒め", "煮浸し（油揚げ）", "高野豆腐", "クリーム煮〔中華風/洋風〕", "おかか和え", "胡麻和え", "白和え", "ツナ和え", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限オクラ（ナムル＋ツナ）"], "オクラ": ["バター炒め", "バター醤油炒め", "オイスターソース炒め", "煮浸し（油揚げ）", "高野豆腐", "おかか和え", "胡麻和え", "白和え", "ツナ和え", "めかぶ/もずく和え", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限オクラ（ナムル＋ツナ）"], "ニラ": ["ニラ玉", "オイスターソース炒め"], "ピーマン/パプリカ": ["チーズツナ焼き", "味噌炒め", "塩おかか炒め", "めんつゆ煮", "塩昆布和え", "【パプリカ】マリネ", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限ピーマン/パプリカ（ナムル＋ツナ）"]}, "共通": {"キャベツ": ["オイスターソース煮", "煮浸し", "鍋の素", "おかか和え", "胡麻和え", "和風ツナ和え", "塩昆布和え", "浅漬け〔塩昆布＋酢〕", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限キャベツ（ナムル＋ツナ）"], "もやし": ["オイスターソース煮", "煮浸し", "鍋の素", "おかか和え", "胡麻和え", "和風ツナ和え", "塩昆布和え", "浅漬け〔塩昆布＋酢〕", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限もやし（ナムル＋ツナ）", "わかめとカニカマの酢の物"], "白菜": ["クリーム煮〔中華風/洋風〕", "オイスターソース煮", "煮浸し", "鍋の素", "湯豆腐", "おかか和え", "胡麻和え", "和風ツナ和え", "塩昆布和え", "浅漬け〔塩昆布＋酢〕", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限白菜（ナムル＋ツナ）"], "茄子": ["チーズ焼き〔ケチャップ〕", "味噌炒め", "めんつゆ煮", "おかか和え", "胡麻和え", "焼き茄子"], "ズッキーニ": ["チーズ焼き", "塩炒め", "バター醤油炒め"], "大根": ["和の煮物（ちくわ、油揚げ等）", "和風ツナ和え", "塩昆布和え", "浅漬け（塩昆布＋酢）", "なます", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限大根（ナムル＋ツナ）"], "かぶ": ["和の煮物（ちくわ、油揚げ等）", "クリーム煮〔中華風/洋風〕", "和風ツナ和え", "塩昆布和え", "浅漬け（塩昆布＋酢）", "ナムル〔ガラスープ＋ごま油＋ごま〕", "無限かぶ（ナムル＋ツナ）"], "切り干し大根": ["切り干し大根の煮物"], "ごぼう": ["きんぴらごぼう"], "れんこん": ["きんぴら", "磯辺焼き〔青のり・塩〕", "バター醤油炒め"], "じゃが芋": ["チーズ焼き", "芋餅", "ジャーマンポテト", "バター醤油炒め", "味噌炒め", "肉じゃが", "煮っころがし（おかか）", "ふかし芋", "ポテトサラダ"], "さつま芋": ["チーズ焼き", "芋餅", "ジャーマンポテト", "バター醤油炒め", "味噌炒め", "肉じゃが", "煮っころがし（おかか）", "ふかし芋", "ポテトサラダ"], "長芋": ["チーズ焼き", "磯辺焼き", "ジャーマンポテト", "バター醤油炒め", "味噌炒め", "肉じゃが", "煮っころがし（おかか）", "ふかし芋", "海苔おかか和え"], "こんにゃく": ["こんにゃくの炒り煮", "こんにゃくの田楽", "刺身こんにゃく"], "しいたけ/えのき": ["トースター焼き　〔塩/しょうゆ〕", "バター醤油炒め"], "ひじき/切り昆布": ["ひじき煮/昆布煮（油揚げ/ちくわ/さつま揚げ）"], "わかめ": ["わかめとカニカマと春雨の酢の物"], "その他の副菜": ["玉子豆腐", "チーズちくわ", "冷奴", "厚揚げ", "もずく", "わかめ"]}}, "soupIngredients": ["豆腐", "わかめ", "ねぎ", "大根", "かぶ", "玉ねぎ", "じゃがいも", "えのき","なめこ", "小松菜", "油揚げ", "キャベツ", "にんじん"], "fridayCategories": ["豚ひき肉", "鶏", "グラタン", "カレー"], "fridayOptions": ["サラダ", "野菜スープ", "シチュー", "豚汁", "けんちん汁"]};
+const KEY="wagaya_menu_production_v1";
+const HISTORY="wagaya_history_production_v1";
+
+const dayDefs=[
+ {key:"mon",name:"月曜日",mainCat:"魚",s1:"月木",s2:"共通"},
+ {key:"tue",name:"火曜日",mainCat:"鶏",s1:"火",s2:"共通"},
+ {key:"wed",name:"水曜日",mainCat:"魚",s1:"共通",s2:"共通"},
+ {key:"thu",name:"木曜日",mainCat:"豚",s1:"月木",s2:"共通"},
+ {key:"fri",name:"金曜日",mainCat:"金",s1:null,s2:null},
+ {key:"sat",name:"土曜日",mainCat:"週末",s1:null,s2:null},
+ {key:"sun",name:"日曜日",mainCat:"週末",s1:null,s2:null},
+];
+
+let state=JSON.parse(localStorage.getItem(KEY)||"{}");
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function opts(arr, selected=""){return `<option value="">選択してください</option>`+arr.map(x=>`<option ${x===selected?"selected":""} value="${esc(x)}">${esc(x)}</option>`).join("")+`<option value="__free__" ${selected==="__free__"?"selected":""}>自由入力</option>`}
+function freeInput(id,val=""){return `<input id="${id}" value="${esc(val)}" placeholder="自由入力">`}
+function dishRow(day,slot,label,cat){
+ const cur=state[day]?.[slot]||"";
+ const arr=DATA.main[cat]||[];
+ return `<div class="row"><div class="label">${label}<span class="badge">${esc(cat)}</span></div><div>
+ <select id="${day}_${slot}" onchange="toggleFree(this)">${opts(arr,cur)}</select>
+ <div id="${day}_${slot}_free" class="free" style="display:${cur==="__free__"?"block":"none"}">${freeInput(day+"_"+slot+"_f",state[day]?.[slot+"_f"]||"")}</div>
+ <div class="memo"><div class="field-title">材料・メモ</div>${freeInput(day+"_"+slot+"_memo",state[day]?.[slot+"_memo"]||"")}</div>
+ </div></div>`;
+}
+function sideRow(day,slot,label,group){
+ const veg=state[day]?.[slot+"_veg"]||"", dish=state[day]?.[slot]||"";
+ const vegetables=Object.keys(DATA.side[group]||{});
+ const currentDishes=(DATA.side[group]?.[veg]||[]).filter(x=>x && !/^(炒め物|煮物|和え物|サラダ|汁物|蒸し物|焼き物|揚げ物|その他)$/i.test(x.trim()));
+ return `<div class="row"><div class="label">${label}</div><div>
+ <div class="side-picker">
+   <div>
+    <div class="field-title">① 野菜</div>
+    <select id="${day}_${slot}_veg" onchange="updateSideDish('${day}','${slot}','${group}')">
+      ${opts(vegetables,veg)}
+    </select>
+   </div>
+   <div>
+    <div class="field-title">② 料理名</div>
+    <select id="${day}_${slot}" onchange="toggleFree(this)">
+      ${opts(currentDishes,dish)}
+    </select>
+   </div>
+ </div>
+ <div class="hint">野菜を選ぶと、その野菜の料理名だけが表示されます。</div>
+ <div id="${day}_${slot}_free" class="free" style="display:${dish==="__free__"?"block":"none"}">${freeInput(day+"_"+slot+"_f",state[day]?.[slot+"_f"]||"")}</div>
+ <div class="memo"><div class="field-title">材料・メモ</div>${freeInput(day+"_"+slot+"_memo",state[day]?.[slot+"_memo"]||"")}</div>
+ </div></div>`;
+}
+function soupRow(day){
+ const s=state[day]?.soup||"", type=state[day]?.soupType||"味噌汁", ing=state[day]?.soupIng||[];
+ return `<div class="row"><div class="label">汁物</div><div>
+ <select id="${day}_soupType">${opts(["味噌汁","スープ"],type)}</select>
+ <div class="field-title" style="margin-top:7px">具材（複数選択）</div>
+ <div style="display:flex;flex-wrap:wrap;gap:6px">${DATA.soupIngredients.map(x=>`<label class="soup-ingredient" style="font-size:12px;border:1px solid #d7ddd6;border-radius:999px;padding:5px 8px"><input type="checkbox" class="${day}_soupIng" value="${esc(x)}" ${ing.includes(x)?"checked":""} style="width:auto"> ${esc(x)}</label>`).join("")}</div>
+ <div class="memo">${freeInput(day+"_soup",s||"")}</div>
+ </div></div>`;
+}
+function render(){
+ document.getElementById("days").innerHTML=dayDefs.map(d=>{
+   let body="";
+   if(d.key==="fri"){
+     const cat=state[d.key]?.mainCat||"";
+     const detail=(cat==="豚ひき肉"||cat==="鶏")?(state[d.key]?.mainDish||""):"";
+     body=`<div class="row"><div class="label">主菜</div><div>
+       <select id="fri_mainCat" onchange="fridayMainChanged()">${opts(DATA.fridayCategories,cat)}</select>
+       <div id="fri_detail" style="margin-top:7px;display:${(cat==="豚ひき肉"||cat==="鶏")?"block":"none"}">
+         <select id="fri_mainDish">${opts(DATA.main[cat]||[],detail)}</select>
+       </div>
+       <div id="fri_free" class="free" style="display:${cat==="__free__"?"block":"none"}">${freeInput("fri_mainCat_f",state.fri?.mainCat_f||"")}</div>
+       <div class="memo"><div class="field-title">材料・メモ</div>${freeInput("fri_main_memo",state.fri?.main_memo||"")}</div>
+     </div></div>
+     <div class="row"><div class="label">サラダ・汁物</div><div>
+       <select id="fri_side" onchange="toggleFree(this)">${opts(["サラダ","野菜スープ","シチュー","豚汁","けんちん汁"],state.fri?.side||"")}</select>
+       <div id="fri_side_free" class="free" style="display:${state.fri?.side==="__free__"?"block":"none"}">${freeInput("fri_side_f",state.fri?.side_f||"")}</div>
+       <div class="memo">${freeInput("fri_side_memo",state.fri?.side_memo||"")}</div>
+     </div></div>`;
+   } else if(d.key==="sat"||d.key==="sun"){
+     body=`<div class="row"><div class="label">メニュー</div><div>
+       <select id="${d.key}_menu" onchange="toggleFree(this)">${opts(DATA.main["土日のメニュー"],state[d.key]?.menu||"")}</select>
+       <div id="${d.key}_menu_free" class="free" style="display:${state[d.key]?.menu==="__free__"?"block":"none"}">${freeInput(d.key+"_menu_f",state[d.key]?.menu_f||"")}</div>
+       <div class="memo">${freeInput(d.key+"_menu_memo",state[d.key]?.menu_memo||"")}</div>
+     </div></div>
+     <div class="row"><div class="label">予備</div><div>
+       <input id="${d.key}_reserve" value="${esc(state[d.key]?.reserve||"")}" placeholder="予備メニューを自由入力">
+     </div></div>`;
+   } else {
+     body=dishRow(d.key,"main","主菜",d.mainCat)+sideRow(d.key,"side1","副菜①",d.s1)+sideRow(d.key,"side2","副菜②",d.s2)+soupRow(d.key);
+   }
+   return `<section class="day"><div class="dayhead"><div class="dayname">${d.name}</div><div class="rule">${d.key==="fri"?"金曜：4分類から選択":d.key==="sat"||d.key==="sun"?"土日メニュー":"主菜＋副菜＋汁物"}</div></div>${body}<div class="actions"><button onclick="openDish('${d.key}')">料理メモ・評価</button></div></section>`;
+ }).join("");
+}
+function toggleFree(sel){
+ const el=document.getElementById(sel.id+"_free"); if(el) el.style.display=sel.value==="__free__"?"block":"none";
+}
+function updateSideDish(day,slot,group){
+ const veg=document.getElementById(day+"_"+slot+"_veg").value;
+ const ds=document.getElementById(day+"_"+slot);
+ const dishes=(DATA.side[group]?.[veg]||[]).filter(x=>x && !/^(炒め物|煮物|和え物|サラダ|汁物|蒸し物|焼き物|揚げ物|その他)$/i.test(x.trim()));
+ ds.innerHTML=opts(dishes,"");
+ const f=document.getElementById(day+"_"+slot+"_free"); if(f)f.style.display="none";
+}
+function fridayMainChanged(){
+ const cat=document.getElementById("fri_mainCat").value;
+ const detail=document.getElementById("fri_detail");
+ detail.style.display=(cat==="豚ひき肉"||cat==="鶏")?"block":"none";
+ if(cat==="豚ひき肉"||cat==="鶏") document.getElementById("fri_mainDish").innerHTML=opts(DATA.main[cat]||[],"");
+}
+function collect(){
+ const out={};
+ for(const d of dayDefs){
+   const x={};
+   if(d.key==="fri"){
+     x.mainCat=document.getElementById("fri_mainCat").value;
+     x.mainCat_f=document.getElementById("fri_mainCat_f")?.value||"";
+     x.mainDish=document.getElementById("fri_mainDish")?.value||"";
+     x.main_memo=document.getElementById("fri_main_memo").value;
+     x.side=document.getElementById("fri_side").value; x.side_f=document.getElementById("fri_side_f")?.value||"";
+     x.side_memo=document.getElementById("fri_side_memo").value;
+   } else if(d.key==="sat"||d.key==="sun"){
+     x.menu=document.getElementById(d.key+"_menu").value; x.menu_f=document.getElementById(d.key+"_menu_f")?.value||"";
+     x.menu_memo=document.getElementById(d.key+"_menu_memo").value; x.reserve=document.getElementById(d.key+"_reserve").value;
+   } else {
+     for(const slot of ["main","side1","side2"]){
+       x[slot]=document.getElementById(d.key+"_"+slot).value;
+       x[slot+"_f"]=document.getElementById(d.key+"_"+slot+"_f")?.value||"";
+       x[slot+"_memo"]=document.getElementById(d.key+"_"+slot+"_memo").value;
+       if(slot!=="main") x[slot+"_veg"]=document.getElementById(d.key+"_"+slot+"_veg").value;
+     }
+     x.soupType=document.getElementById(d.key+"_soupType").value;
+     x.soupIng=[...document.querySelectorAll("."+d.key+"_soupIng:checked")].map(e=>e.value);
+     x.soup=document.getElementById(d.key+"_soup").value;
+   }
+   out[d.key]=x;
+ }
+ return out;
+}
+function saveWeek(){
+ state=collect(); localStorage.setItem(KEY,JSON.stringify(state));
+ const hist=JSON.parse(localStorage.getItem(HISTORY)||"[]");
+ hist.unshift({date:new Date().toLocaleString("ja-JP"),data:state});
+ localStorage.setItem(HISTORY,JSON.stringify(hist.slice(0,30)));
+ alert("今週の献立を保存しました。");
+}
+function clearWeek(){if(confirm("現在の入力をクリアしますか？")){state={};localStorage.removeItem(KEY);render();}}
+function showHistory(){
+ const hist=JSON.parse(localStorage.getItem(HISTORY)||"[]");
+ const h=document.getElementById("history"); h.style.display="block";
+ h.innerHTML="<h2 style='margin:0 0 8px'>保存履歴</h2>"+(hist.length?hist.map((x,i)=>`<div class='history-item'><b>${esc(x.date)}</b><div>${summary(x.data)}</div></div>`).join(""):"まだ履歴がありません。");
+}
+function summary(d){
+ return dayDefs.map(day=>{
+  const x=d[day.key]||{};
+  if(day.key==="fri") return `金：${x.mainCat||""}${x.mainDish?" / "+x.mainDish:""}${x.side?"・"+x.side:""}`;
+  if(day.key==="sat"||day.key==="sun") return `${day.name[0]}：${x.menu||""}`;
+  return `${day.name[0]}：${x.main||""} / ${x.side1||""} / ${x.side2||""}`;
+ }).join("　");
+}
+function openDish(day){
+ const d=state[day]||{}; const name=d.mainDish||d.main||d.menu||"未選択";
+ const key="dish_"+name; const saved=JSON.parse(localStorage.getItem(key)||"{}");
+ document.getElementById("modalBody").innerHTML=`<h2>${esc(name||"料理メモ")}</h2>
+ <div class="field-title">家族の評価</div><div class="rating">${[1,2,3,4,5].map(n=>`<button class="star" onclick="setRating('${key}',${n})">${n<=saved.rating?"★":"☆"}</button>`).join("")}</div>
+ <div class="field-title" style="margin-top:12px">レシピ・作り方</div><textarea id="recipe" rows="5">${esc(saved.recipe||"")}</textarea>
+ <div class="field-title" style="margin-top:12px">料理についてのメモ</div><textarea id="dishnote" rows="4">${esc(saved.note||"")}</textarea>
+ <div class="actions"><button class="primary" onclick="saveDish('${key}')">保存</button></div>`;
+ document.getElementById("modal").classList.add("open");
+}
+function saveDish(key){
+ const old=JSON.parse(localStorage.getItem(key)||"{}");
+ localStorage.setItem(key,JSON.stringify({...old,recipe:document.getElementById("recipe").value,note:document.getElementById("dishnote").value}));
+ alert("料理メモを保存しました。"); closeModal();
+}
+function setRating(key,n){
+ const old=JSON.parse(localStorage.getItem(key)||"{}"); localStorage.setItem(key,JSON.stringify({...old,rating:n})); openDish(key.replace(/^dish_/,""));
+}
+function closeModal(){document.getElementById("modal").classList.remove("open");}
+render();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./service-worker.js').catch(function () {});
+  });
+}
+</script>
+
+</body></html>
