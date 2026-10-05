@@ -1,0 +1,10 @@
+{
+  "name": "わが家の献立",
+  "short_name": "わが家の献立",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ja",
+  "description": "わが家の献立を管理するアプリ"
+}
